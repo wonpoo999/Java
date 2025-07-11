@@ -56,4 +56,7 @@ class MyClass {
     }
 
     // getStringInfo(문자열) 실행하면 문자열의 길이를 리턴하는 method 이니라
+    static int getStringInfo(String data) {
+        return data.length();
+    }
 }
