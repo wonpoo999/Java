@@ -24,6 +24,7 @@ public class People {
     public boolean isAdult() {
         return this.isAdult;
     }
+    // 리턴이 있으면 리턴하는 값의 타일을 반드시 알려줘야 한다.
 
     // setter : 인자 타입 주의
     public void setName(String name) { // name 변수에 원하는 값이 저장된거야

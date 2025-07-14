@@ -1,0 +1,61 @@
+클래스 정의
+
+1. 구성 요서
+ a) 멤버 변수 : static(이건 객체랑은 상관없고 인스턴스 변수랑 상관있어), instance 변수(필드, 프로퍼티)
+ b) 멤버 method: static, instance method
+
+  * instance : 생성된 객체
+  * static: class 수즌으로 정보를 저장 및 기능을 제공
+
+2. 접근제어자 : Access Modifier
+ - public, default(키워드 안 쓰는 게 default다), private는 키워드다, protected(inheritance, 상속에서 사용한다)
+ - 멤버 변수 or 멤버 메소드에 public, private, default 이런 거 쓰는 거에 따라서 어느 정도 접근이 가능한지 가능
+ - ※ quiz
+   1) 패키지가 다를 때는 사용 못하게 접근을 제한하는 것은?
+        정답 : default(기본)
+   2) pbulic으로 설정된 멤버 변수 (메소드) 를 다른 캐피지에서 접근할 때 필요한 것은?
+        정답: import - Java에서는 일반적으로 클래스 import
+
+  - private : 객체지향 programming의 은닉성 (Encapsulation)
+
+3.  instance 멤버 변수의 접근 제어자: private0
+
+ - instance 변수를 직젖ㅂ 값을 변경할 수 없도록 함.
+  실제 데이터의 접근은 getter 또는 seter 구현하여 제공.
+
+예시) 점수 0~100 값의 제한을 setter에서 검사하고 저장
+
+4. getter 와 setter
+ - RW (Read와 Wrtie)
+ - 멤버변수 private인 경우에 구현. 필요에 따라서 getter와 setter 중 하나만 구현하기도 한다.
+
+1) getter: 데이터 읽기 (Read) 기능 method Return이 반드시 있어야 한다.
+	=> Instance 변수와 return type 선언이 일치해야한다.
+
+2) setter: 데이터 저장 (Wrtie) 기능 method. Parameters가 있어야 함
+
+※ 생선된 객체의 자기자신을 가리키는 키워드는?
+정답 : this
+ => new 클래스 이름 () 연산할 때마다 객체가 생성되고 메소드 안에서 this로 이 객체의 멤버를 가리킨다.
+
+5. 멤버 변수 static의 특징
+ => static 메소드는 동일한 클래스 수준의 멤버(변수와 메소드)들만 사용 가능하다.
+     static 변수와 static method만 사용 가능.
+     static 요소들은 메모리 영역이 'method' 라고 부르는 곳에 저장. (클래스 영역입니다).
+
+6. 오늘할 내용은 생성자이다
+
+	생성자란? 메소드이다. new 연산으로 객체가 만들어질 때 실행한다.
+
+	생성자 규칙
+	1) 생성자는 클래스 이름과 동일하게 한다.
+	2) method signature / method origin[원형](prototype): <접근권한> <static 여부> <return type 설정> <method name(parameter 변수 선언)
+	이 중에서 생성자 메소드는 접근권한, 클래스이름과 동일한 메소드 이름, 인자 변수 선언 3가지만 정의하면 된다.
+	=> 결론적으로 생성자는 return 타입이 없다. return 타입이 numb이 아니라 아예 표시를 안 한다고
+	3) 기본 생성자는 인자(parameter) 변수가 아예 없어. 선언이 없다는거야. 
+	4) 커스텀 생성자라고 불러. customizing할 때 그거야. 인자 변수 선언하여.. 그러니까 외부에서 data값을 전달 받아 변수를 초기화하는 것 일반적이니라.
+
+
+
+
+
