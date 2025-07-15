@@ -19,6 +19,19 @@ public class People {
         this.isAdult = isAdult;
     }
 
+    // 3) 커스텀 생성자는 필요한 변수만 초기화하도록 많이 만들 수 있습니다.
+    public People(String name) {
+        this.name = name;
+    }
+
+    public People(int age) {
+        this.age = age;
+    }
+
+    public People(boolean isAdult) {
+        this.isAdult = isAdult;
+    }
+
     // 기본 생성자를 사용할 때에는 setter가 필수야. 기본 생성자로 만들면 값을 줄 수 없잖냐?
     public void setName(String name) {
         this.name = name;

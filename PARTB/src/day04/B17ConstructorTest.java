@@ -5,6 +5,7 @@ public class B17ConstructorTest {
     public static void main(String[] args) {
         People sana = new People();
         // 기본 생성자 실행
+        // null, 0, false가 기본값
 
         // 커스텀 생성자 실행
         People momo = new People("김모모", 24, true);
@@ -14,6 +15,10 @@ public class B17ConstructorTest {
 
         System.out.println("기본 생성자로 만든 sana: " + sana);
         System.out.println("커스텀 생성자로 만든 momo: " + momo);
+
+        // 다른 형식의 커스텀 생성자 실행
+        People nana = new People(25);
+        System.out.println("커스텀 생성자로 만든 nana: " + nana);
 
     }
 

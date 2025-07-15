@@ -30,6 +30,8 @@ class MyClass {
     static String message;
 
     // 메소드 인자가 없는 것 vs 있는 것
+    // 7월 14일 오버로딩
+    // hello() 는 메소드 이름이 같고 인자가 다른 형식으로 2개 있습니다. (메소드 오버로딩)
     static void hello() {
         System.out.println("__________________");
         System.out.println("Welcome to java world");
