@@ -5,18 +5,24 @@ public class B24CloneTest {
     // → 자식 클래스에서 clone() 메서드 오버라이딩 필요
     // → 단순 대입(x), 복제된 새로운 객체를 만들고자 할 때 사용
 
-    public static void main(String[] args) throws Exception {
-        Student sana = new Student("최사나", 29); // 원본 객체 생성
+    public static void main(String[] args) {
+        try {
+            Student sana = new Student("최사나", 29); // 원본 객체 생성
 
-        // clone() 메서드 호출 시 Object 타입이므로 Student로 형변환 필요
-        Student sanaClone = (Student) sana.clone(); // 복제본 생성 (얕은 복사)
+            // clone() 메서드 호출 시 Object 타입이므로 Student로 형변환 필요
+            Student sanaClone = (Student) sana.clone(); // 복제본 생성 (얕은 복사)
+            // checked 예외 : 컴파일러가 메소드의 예외 가능성을 알고 있다.
+            // -> 예외 처리 필수.
 
-        System.out.println("sanaClone: " + sanaClone.getName()
-                + "," + sanaClone.getAge()); // 복제된 객체의 필드 출력
+            System.out.println("sanaClone: " + sanaClone.getName()
+                    + "," + sanaClone.getAge()); // 복제된 객체의 필드 출력
 
-        System.out.println("sana 주소 : " + sana); // 원본 객체 주소
-        System.out.println("sanaClone 주소 : " + sanaClone); // 복제 객체 주소
-        // → 서로 다른 주소 출력 → clone() 성공적으로 동작한 것 확인
+            System.out.println("sana 주소 : " + sana); // 원본 객체 주소
+            System.out.println("sanaClone 주소 : " + sanaClone); // 복제 객체 주소
+            // → 서로 다른 주소 출력 → clone() 성공적으로 동작한 것 확인
+        } catch (Exception e) {
+            System.out.println("clone예외 발생!!");
+        }
     }
 }
 

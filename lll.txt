@@ -1,0 +1,711 @@
+main.jsx
+
+// src/main.jsx
+
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App.jsx";
+import "./assets/scss/style.scss"; // SCSS 스타일 파일 import
+
+/**
+ * main.jsx
+ * - React 앱의 진입점
+ * - App 컴포넌트를 root DOM 요소에 렌더링
+ */
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+
+quiz.jsx
+
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { choiceQuizzes, fillQuizzes, allQuizzes } from './quizData';
+
+const TIME_LIMIT = 30;
+
+// 배열 섞기 함수 (shuffle)
+function shuffleArray(array) {
+  return [...array].sort(() => Math.random() - 0.5);
+}
+
+// 객관식 문제 옵션 섞기 + 정답 인덱스 보정 함수
+function prepareShuffledQuizData(data) {
+  return data.map((q) => {
+    if (q.type === "fill") return q; // 주관식 문제는 그대로
+    const correctValue = q.options[q.answer];
+    const shuffled = shuffleArray(q.options);
+    const newAnswer = shuffled.indexOf(correctValue);
+    return { ...q, options: shuffled, answer: newAnswer };
+  });
+}
+
+// 칭찬 메시지
+const positiveMessages = [
+  "잘했어요! 👏",
+  "멋진 선택이에요! 👍",
+  "계속 잘해요! 💪",
+  "훌륭해요! 🎉",
+];
+
+// 재도전 메시지
+const retryMessages = [
+  "다시 한 번 도전해보세요! 🔄",
+  "포기하지 말고! ✊",
+  "조금만 더 힘내요! 😊",
+];
+
+export default function Quiz() {
+  // 모드 상태 (choice, fill, mixed)
+  const [mode, setMode] = useState(null);
+
+  // 퀴즈 데이터, 현재 문제 인덱스 등 상태들
+  const [quizData, setQuizData] = useState([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [selected, setSelected] = useState(null);
+  const [fillInput, setFillInput] = useState([]);
+  const [showAnswer, setShowAnswer] = useState(false);
+  const [score, setScore] = useState(0);
+  const [answerHistory, setAnswerHistory] = useState([]);
+  const [timeLeft, setTimeLeft] = useState(TIME_LIMIT);
+  const [quizEndTime, setQuizEndTime] = useState(null);
+  const [message, setMessage] = useState("");
+  const [gifSrc, setGifSrc] = useState("");
+  const [showTryAgainBtn, setShowTryAgainBtn] = useState(false);
+  const [showNextBtn, setShowNextBtn] = useState(false);
+  const [canRetry, setCanRetry] = useState(false);
+
+  const quizStartTime = useRef(Date.now());
+  const timerId = useRef(null);
+
+  // 퀴즈 모드별 데이터 매핑
+  const multipleChoiceQuiz = choiceQuizzes;
+  const fillInTheBlankQuiz = fillQuizzes;
+  const mixedQuiz = allQuizzes;
+
+  const current = quizData[currentIndex];
+  const isFillQuestion = current?.type === "fill";
+
+  const allDone = quizEndTime !== null;
+  const allCorrect = allDone && score === quizData.length;
+  const allWrong = allDone && score === 0;
+
+  // GIF 상태별 설정 함수
+  const setGifByResult = (type) => {
+    switch (type) {
+      case "correct":
+        setGifSrc("/images/correct.gif");
+        break;
+      case "try-again":
+        setGifSrc("/images/try-again.gif");
+        break;
+      case "wrong":
+        setGifSrc("/images/wrong.gif");
+        break;
+      case "gameover":
+        setGifSrc("/images/gameover.gif");
+        break;
+      case "the-end":
+        setGifSrc("/images/the-end.gif");
+        break;
+      case "congrats":
+        setGifSrc("/images/congrats.gif");
+        break;
+      default:
+        setGifSrc("");
+        break;
+    }
+  };
+
+  // 모드가 선택되면 퀴즈 데이터 준비 및 초기화
+  useEffect(() => {
+    if (!mode) return;
+
+    let data;
+    if (mode === "choice") data = multipleChoiceQuiz;
+    else if (mode === "fill") data = fillInTheBlankQuiz;
+    else data = mixedQuiz;
+
+    const prepared = shuffleArray(prepareShuffledQuizData(data));
+    setQuizData(prepared);
+    setCurrentIndex(0);
+    setSelected(null);
+    setFillInput([]);
+    setShowAnswer(false);
+    setScore(0);
+    setAnswerHistory(prepared.map(() => ({ tries: 0, isCorrect: false, selected: null })));
+    setTimeLeft(TIME_LIMIT);
+    setMessage("");
+    setGifSrc("");
+    setShowTryAgainBtn(false);
+    setShowNextBtn(false);
+    setCanRetry(false);
+    setQuizEndTime(null);
+    quizStartTime.current = Date.now();
+  }, [mode, fillInTheBlankQuiz, mixedQuiz, multipleChoiceQuiz]);
+
+  // 답안 히스토리 및 점수 업데이트
+  const updateAnswerHistory = (idx, isCorrect, tries, selectedIdx) => {
+    setAnswerHistory((prev) => {
+      const newHistory = [...prev];
+      newHistory[idx] = { tries, isCorrect, selected: selectedIdx };
+      return newHistory;
+    });
+    if (isCorrect) setScore((prev) => prev + 1);
+  };
+
+  // 시간 초과 처리 함수
+  const handleTimeout = useCallback(() => {
+    const { isCorrect, tries } = answerHistory[currentIndex] || { tries: 0, isCorrect: false };
+    if (isCorrect) return;
+
+    if (tries === 0) {
+      setMessage("⏰ 시간 초과! 다시 시도해보세요.");
+      setGifByResult("try-again");
+      setShowTryAgainBtn(true);
+      setCanRetry(false);
+      updateAnswerHistory(currentIndex, false, tries + 1, selected);
+    } else {
+      setMessage("❌ 오답입니다! 다음 문제로 넘어가세요.");
+      setGifByResult("wrong");
+      setShowAnswer(true);
+      setShowNextBtn(true);
+      setShowTryAgainBtn(false);
+      setCanRetry(false);
+      updateAnswerHistory(currentIndex, false, tries + 1, selected);
+    }
+  }, [answerHistory, currentIndex, selected]);
+
+  // 타이머 관리 useEffect
+  useEffect(() => {
+    if (quizEndTime) return;
+
+    const tries = answerHistory[currentIndex]?.tries || 0;
+    const isCorrect = answerHistory[currentIndex]?.isCorrect || false;
+
+    if (isCorrect || tries >= 2) {
+      clearInterval(timerId.current);
+      setTimeLeft(0);
+      return;
+    }
+
+    setTimeLeft(TIME_LIMIT);
+    clearInterval(timerId.current);
+
+    timerId.current = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev === 1) {
+          clearInterval(timerId.current);
+          handleTimeout();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timerId.current);
+  }, [currentIndex, quizEndTime, answerHistory, handleTimeout]);
+
+  // 객관식 선택 처리
+  const handleSelect = (idx) => {
+    const tries = answerHistory[currentIndex]?.tries || 0;
+    if (
+      showAnswer ||
+      answerHistory[currentIndex]?.isCorrect ||
+      tries >= 2 ||
+      timeLeft === 0 ||
+      (tries === 1 && !canRetry)
+    )
+      return;
+
+    setCanRetry(false);
+    setSelected(idx);
+
+    if (idx === current.answer) {
+      setShowAnswer(true);
+      setMessage(positiveMessages[Math.floor(Math.random() * positiveMessages.length)]);
+      setGifByResult("correct");
+      setShowTryAgainBtn(false);
+      setShowNextBtn(true);
+      updateAnswerHistory(currentIndex, true, tries + 1, idx);
+    } else {
+      if (tries === 0) {
+        setMessage(retryMessages[Math.floor(Math.random() * retryMessages.length)]);
+        setGifByResult("try-again");
+        setShowTryAgainBtn(true);
+        setShowAnswer(false);
+        setCanRetry(false);
+        updateAnswerHistory(currentIndex, false, tries + 1, idx);
+      } else {
+        setMessage("❌ 오답입니다! 다음 문제로 넘어가세요.");
+        setGifByResult("wrong");
+        setShowAnswer(true);
+        setShowNextBtn(true);
+        setShowTryAgainBtn(false);
+        updateAnswerHistory(currentIndex, false, tries + 1, idx);
+      }
+    }
+  };
+
+  // 주관식 답안 확인 처리
+  const handleCheckFillAnswer = () => {
+    const tries = answerHistory[currentIndex]?.tries || 0;
+    const inputValue = (fillInput[currentIndex] || "").trim();
+    const correctAnswer = current.answer.trim();
+
+    if (
+      showAnswer ||
+      answerHistory[currentIndex]?.isCorrect ||
+      tries >= 2 ||
+      timeLeft === 0 ||
+      (tries === 1 && !canRetry)
+    )
+      return;
+
+    setCanRetry(false);
+    setSelected(inputValue);
+
+    if (inputValue.toLowerCase() === correctAnswer.toLowerCase()) {
+      setShowAnswer(true);
+      setMessage(positiveMessages[Math.floor(Math.random() * positiveMessages.length)]);
+      setGifByResult("correct");
+      setShowTryAgainBtn(false);
+      setShowNextBtn(true);
+      updateAnswerHistory(currentIndex, true, tries + 1, inputValue);
+    } else {
+      if (tries === 0) {
+        setMessage(retryMessages[Math.floor(Math.random() * retryMessages.length)]);
+        setGifByResult("try-again");
+        setShowTryAgainBtn(true);
+        setShowAnswer(false);
+        updateAnswerHistory(currentIndex, false, tries + 1, inputValue);
+      } else {
+        setMessage("❌ 오답입니다! 다음 문제로 넘어가세요.");
+        setGifByResult("wrong");
+        setShowAnswer(true);
+        setShowNextBtn(true);
+        setShowTryAgainBtn(false);
+        updateAnswerHistory(currentIndex, false, tries + 1, inputValue);
+      }
+    }
+  };
+
+  // 다시 시도 버튼 처리
+  const handleTryAgain = () => {
+    setSelected(null);
+    setMessage("");
+    setGifSrc("");
+    setShowTryAgainBtn(false);
+    setCanRetry(true);
+    setTimeLeft(TIME_LIMIT);
+  };
+
+  // 다음 문제 혹은 결과보기 버튼 처리
+  const handleNext = () => {
+    setSelected(null);
+    setShowAnswer(false);
+    setMessage("");
+    setGifSrc("");
+    setShowNextBtn(false);
+    setCanRetry(false);
+    setTimeLeft(TIME_LIMIT);
+
+    if (currentIndex + 1 >= quizData.length) {
+      setQuizEndTime(Date.now());
+    } else {
+      setCurrentIndex(currentIndex + 1);
+    }
+  };
+
+  // 다시 시작 (모드 선택 초기화)
+  const handleRestart = () => {
+    setMode(null);
+  };
+
+  // 주관식 입력 변화 처리
+  const onFillInputChange = (e) => {
+    setFillInput((prev) => {
+      const newFill = [...prev];
+      newFill[currentIndex] = e.target.value;
+      return newFill;
+    });
+  };
+
+  return (
+    <div className="app">
+      {/* 모드 선택 화면 */}
+      {!mode && (
+        <>
+          <h1>프로그래밍 퀴즈 유형을 선택하세요</h1>
+          <div className="mode-select">
+            <button
+              onClick={() => setMode("choice")}
+              className={mode === "choice" ? "selected" : ""}
+            >
+              객관식 문제만
+            </button>
+            <button
+              onClick={() => setMode("fill")}
+              className={mode === "fill" ? "selected" : ""}
+            >
+              주관식 문제만
+            </button>
+            <button
+              onClick={() => setMode("mixed")}
+              className={mode === "mixed" ? "selected" : ""}
+            >
+              객관식 + 주관식 혼합
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* 퀴즈 진행 화면 */}
+      {mode && !allDone && current && (
+        <div className="quiz">
+          <div className="quiz-progress">
+            Quiz {currentIndex + 1} / {quizData.length} &nbsp;&nbsp;
+            <span>남은 시간: {timeLeft}초</span>
+          </div>
+
+          <h2>{current.question}</h2>
+
+          {/* 객관식 문제 */}
+          {!isFillQuestion && (
+            <ul>
+              {current.options.map((option, idx) => {
+                let className = "option";
+                if (showAnswer) {
+                  if (idx === current.answer) className += " correct";
+                  else if (idx === selected && idx !== current.answer) className += " wrong";
+                  else className += " disabled";
+                } else if (idx === selected) {
+                  className += " selected";
+                }
+
+                return (
+                  <li
+                    key={idx}
+                    className={className}
+                    onClick={() => handleSelect(idx)}
+                    aria-disabled={showAnswer}
+                  >
+                    {option}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          {/* 주관식 문제 */}
+          {isFillQuestion && (
+            <div className="fill-question">
+              <input
+                type="text"
+                value={fillInput[currentIndex] || ""}
+                onChange={onFillInputChange}
+                disabled={showAnswer}
+                placeholder="답을 입력하세요"
+              />
+              <button
+                className="check-btn"
+                onClick={handleCheckFillAnswer}
+                disabled={showAnswer || !(fillInput[currentIndex]?.trim())}
+              >
+                확인
+              </button>
+            </div>
+          )}
+
+          {/* 피드백 메시지 및 GIF */}
+          {message && (
+            <div className="feedback">
+              <p>{message}</p>
+              {gifSrc && <img src={gifSrc} alt="result gif" className="result-gif" />}
+            </div>
+          )}
+
+          {/* 다시 시도 버튼 */}
+          {showTryAgainBtn && (
+            <button className="try-again-btn" onClick={handleTryAgain}>
+              다시 시도하기
+            </button>
+          )}
+
+          {/* 다음 문제 or 결과보기 버튼 */}
+          {showNextBtn && (
+            <button className="next-btn" onClick={handleNext}>
+              {currentIndex + 1 === quizData.length ? "결과보기" : "다음 문제"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* 결과 화면 */}
+      {allDone && (
+        <div className="result">
+          <h2>퀴즈 완료!</h2>
+          <p>
+            {quizData.length}문제 중 {score}문제 맞혔습니다.
+          </p>
+          {allCorrect && (
+            <>
+              <p>🌟 모든 문제를 맞히셨네요! 대단해요! 🌟</p>
+              <img src="/images/congrats.gif" alt="축하 gif" className="result-gif" />
+            </>
+          )}
+          {allWrong && (
+            <>
+              <p>다음엔 꼭 성공할 수 있어요! 포기하지 마세요! 💪</p>
+              <img src="/images/gameover.gif" alt="게임오버 gif" className="result-gif" />
+            </>
+          )}
+          {!allCorrect && !allWrong && <p>잘 하셨어요! 더 도전해보세요!</p>}
+          <button className="retry-btn" onClick={handleRestart}>
+            다시 시작
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+style.scss
+
+.app {
+  max-width: 600px;
+  margin: 2rem auto;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  text-align: center;
+  background: #fff;
+  padding: 1rem;
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.quiz {
+  background: #f9f9f9;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.quiz-progress {
+  font-weight: bold;
+  font-size: 1.2rem;
+  margin-bottom: 0.5rem;
+  color: #333;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+
+  .option {
+    background: #fff;
+    padding: 1rem;
+    margin: 0.5rem 0;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.3s, border-color 0.3s;
+
+    &:hover {
+      background: #f0f0f0;
+    }
+
+    &.correct {
+      background-color: #d4edda;
+      border-color: #28a745;
+      font-weight: bold;
+      color: #155724;
+    }
+
+    &.wrong {
+      background-color: #f8d7da;
+      border-color: #dc3545;
+      font-weight: bold;
+      color: #721c24;
+    }
+
+    &.disabled {
+      pointer-events: none;
+      cursor: default;
+      background: #f9f9f9 !important;
+      color: #999;
+    }
+  }
+}
+
+.fill-question {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+
+  input[type="text"] {
+    flex: 1;
+    padding: 0.7rem;
+    font-size: 1rem;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+  }
+
+  .check-btn {
+    padding: 0.7rem 1.2rem;
+    border: none;
+    border-radius: 8px;
+    background-color: #007bff;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s;
+
+    &:hover {
+      background-color: #0056b3;
+    }
+
+    &:disabled {
+      background-color: #999;
+      cursor: not-allowed;
+    }
+  }
+}
+
+.feedback {
+  margin-top: 1rem;
+
+  p {
+    font-size: 1.1rem;
+  }
+
+  .result-gif {
+    max-width: 100%;
+    margin-top: 1rem;
+    border-radius: 10px;
+  }
+}
+
+.try-again-btn,
+.next-btn,
+.finish-btn,
+.retry-btn {
+  margin-top: 1rem;
+  padding: 0.5rem 1.2rem;
+  font-size: 1rem;
+  cursor: pointer;
+  border-radius: 6px;
+  border: none;
+  background-color: #007bff;
+  color: white;
+  transition: background-color 0.3s ease;
+  display: inline-block;
+}
+
+.try-again-btn:hover,
+.next-btn:hover,
+.finish-btn:hover,
+.retry-btn:hover {
+  background-color: #0056b3;
+}
+
+.result {
+  margin-top: 2rem;
+  text-align: center;
+
+  h2 {
+    margin-bottom: 1rem;
+  }
+
+  p {
+    font-size: 1.1rem;
+    margin: 0.5rem 0;
+  }
+}
+
+/* 버튼 선택 UI */
+.mode-select {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+
+  button {
+    padding: 0.6rem 1.5rem;
+    font-size: 1rem;
+    cursor: pointer;
+    border-radius: 8px;
+    border: 2px solid #007bff;
+    background-color: white;
+    color: #007bff;
+    font-weight: 600;
+    transition: background-color 0.3s, color 0.3s;
+  }
+
+  button.selected,
+  button:hover {
+    background-color: #007bff;
+    color: white;
+  }
+}
+
+index.html
+
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/x-icon" href="./public/images/quiz.jpg" />
+    <title>React 퀴즈</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./src/main.jsx"></script>
+  </body>
+</html>
+
+App.css
+
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+
