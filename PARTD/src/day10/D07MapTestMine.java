@@ -2,7 +2,7 @@ package day10;
 
 import java.util.*;
 
-public class D07MapTest {
+public class D07MapTestMine {
     public static void main(String[] args) {
         Map<String, String> map = new HashMap<>();
         // 1 . 데이터 저장 (toString으로 추가도되고 변경도 된다)

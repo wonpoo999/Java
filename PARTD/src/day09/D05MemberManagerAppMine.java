@@ -260,36 +260,42 @@ public class D05MemberManagerAppMine {
     /**
      * ✅ 전체 회원 목록 출력
      */
+    // ✅ 회원 목록 출력 (로딩 애니메이션 + 줄 정렬 완벽 적용)
     private static void showMembers() {
         if (members.isEmpty()) {
             System.out.println("⚠️ 회원이 없습니다.");
             return;
         }
 
-        // ✅ 헤더
-        System.out.printf("%-6s %-14s %-12s %-20s %20s%n", "ID", "이름", "가입일", "별명", "포인트");
-        System.out.println(
-                "------------------------------------------------------------------------------------------------------");
+        // 👉 헤더 출력 (열 간격 조정: ID 6, 이름 14, 가입일 14, 별명 30, 포인트 22)
+        System.out.printf("%-6s%-14s%-14s%-30s%22s\n", "ID", "이름", "가입일", "별명", "포인트");
+        System.out.println("━".repeat(110));
 
-        // ✅ 회원 출력
         for (Membership m : members) {
-            System.out.printf(
-                    "%-6d %-14s %-12s %-20s %,20.0f%n",
-                    m.getId(),
-                    m.getName(),
-                    m.getJoinDate(),
-                    m.getNickname(),
-                    m.getPoint());
+            String idStr = String.format("%-6d", m.getId());
+            String nameStr = formatFixedWidth(m.getName(), 14);
+            String dateStr = formatFixedWidth(m.getJoinDate().toString(), 14);
+            String nickStr = formatFixedWidth(m.getNickname(), 30);
+            String pointStr = String.format("%,22.0f", m.getPoint());
 
-            // ✅ 비고 출력 (줄바꿈 + 들여쓰기 유지)
+            // 📌 메인 줄 출력
+            System.out.printf("%s%s%s%s%s\n", idStr, nameStr, dateStr, nickStr, pointStr);
+
+            // 📌 비고 줄 (이름 밑에 출력, 별명 열 정렬 기준)
             String remark = m.getRemark();
-            int chunkSize = 50;
             if (remark != null && !remark.isEmpty()) {
+                int chunkSize = 60; // 줄바꿈 기준
+                String indent = "ㄴ 비고: ";
                 for (int i = 0; i < remark.length(); i += chunkSize) {
                     String part = remark.substring(i, Math.min(i + chunkSize, remark.length()));
-                    System.out.printf("      ⮡ 비고: %s%n", part);
+                    System.out.printf("%34s%-30s  %s%s\n", "", "", indent, part); // 이름+가입일+별명만큼 띄움
+                    indent = "        ";
                 }
             }
+
+            // 📌 구분선
+            System.out.println("─".repeat(110));
+            System.out.println();
         }
     }
 
@@ -357,8 +363,14 @@ public class D05MemberManagerAppMine {
                 String name = t[1];
                 LocalDate joinDate = LocalDate.parse(t[2]);
                 String nickname = t[3];
-                double point = Double.parseDouble(t[4]);
-                String remark = t[5];
+                String remark = t[4]; // 먼저 비고 필드
+                double point;
+                try {
+                    point = Double.parseDouble(t[5].replace(",", "").trim()); // 콤마 제거 + 숫자 오류 방지
+                } catch (NumberFormatException e) {
+                    System.out.println("⚠️ 포인트 숫자 변환 오류: " + t[5]);
+                    point = 0.0;
+                }
 
                 members.add(new Membership(id, name, joinDate, nickname, remark, point));
                 if (id > maxId)
@@ -421,4 +433,23 @@ public class D05MemberManagerAppMine {
                 .findFirst()
                 .orElse(null);
     }
+
+    /**
+     * ✅ 문자열 폭을 고정된 폭으로 맞춰주는 함수 (한글은 2칸, 영문은 1칸)
+     */
+
+    private static String formatFixedWidth(String str, int width) {
+        int realWidth = 0;
+        for (char ch : str.toCharArray()) {
+            // 한글은 2칸, 나머지는 1칸 (기본)
+            if (Character.UnicodeBlock.of(ch).toString().contains("HANGUL")) {
+                realWidth += 2;
+            } else {
+                realWidth += 1;
+            }
+        }
+        int padding = Math.max(0, width - realWidth);
+        return str + " ".repeat(padding);
+    }
+
 }
