@@ -1,0 +1,13 @@
+// 파일: .vscode/tasks.json
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Compile Java with UTF-8",
+      "type": "shell",
+      "command": "chcp 65001 && javac -encoding UTF-8 -d bin -cp \"libs/*\" src/**/*.java",
+      "group": "build",
+      "problemMatcher": []
+    }
+  ]
+}

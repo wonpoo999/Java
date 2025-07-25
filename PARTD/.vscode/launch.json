@@ -1,0 +1,17 @@
+// 파일: .vscode/launch.json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Run MemoMainApp (UTF-8)",
+      "request": "launch",
+      "mainClass": "absoluteTest.MemoMainApp",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "vmArgs": "-Dfile.encoding=UTF-8",
+      "preLaunchTask": "Compile Java with UTF-8",
+      "projectName": "MemoSystem"
+    }
+  ]
+}
