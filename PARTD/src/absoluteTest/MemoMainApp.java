@@ -1,8 +1,15 @@
 package absoluteTest;
 
-import javax.swing.*;
-import java.io.*;
-import java.util.*;
+import java.io.File;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Scanner;
+import java.util.Set;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.UIManager;
 
 public class MemoMainApp {
     private static final Scanner sc = new Scanner(System.in, "UTF-8");
@@ -27,6 +34,7 @@ public class MemoMainApp {
             🆁  r - read       : 파일 읽기 (html, csv, pdf, 이미지 등)
             🆃  t - transform  : JavaKeyWord 변환 및 저장
             🆈  y - append     : JavaKeyWord 객체 2개 CSV 저장
+            🆄  u - wordcount : 자바 소스 단어 출현 카운트
 
             =================================================
             """;
@@ -95,15 +103,16 @@ public class MemoMainApp {
                             case "1":
                             case "html":
                                 File file1 = getSaveFile("html", ".html");
-                                HtmlWriter.writeHtmlFile(file1, title, content.toString(), mood, keywordSet, summary);
+                                HtmlWriter.writeHtmlFile(file1, title, content.toString(), mood,
+                                        keywordSet, summary);
                                 System.out.println("✅ HTML 저장 완료");
                                 break;
 
                             case "2":
                             case "pdf":
                                 File file2 = getSaveFile("pdf", ".pdf");
-                                PdfGenerator.generatePdfFromText(title, content.toString(), String.join("\n", summary),
-                                        mood, keywordSet, file2);
+                                PdfGenerator.generatePdfFromText(title, content.toString(),
+                                        String.join("\n", summary), mood, keywordSet, file2);
                                 System.out.println("✅ PDF 저장 완료");
                                 break;
 
@@ -131,7 +140,8 @@ public class MemoMainApp {
                             case "6":
                             case "qr":
                                 File file6 = getSaveFile("qrcodes", ".png");
-                                QrCodeGenerator.generateQRCode("내용: " + content, file6.getAbsolutePath());
+                                QrCodeGenerator.generateQRCode("내용: " + content,
+                                        file6.getAbsolutePath());
                                 System.out.println("✅ QR 코드 저장 완료");
                                 break;
 
@@ -152,19 +162,24 @@ public class MemoMainApp {
 
                             case "9":
                             case "all":
-                                HtmlWriter.writeHtmlFile(getSaveFile("html", ".html"), title, content.toString(), mood,
-                                        keywordSet, summary);
-                                PdfGenerator.generatePdfFromText(title, content.toString(), String.join("\n", summary),
-                                        mood, keywordSet, getSaveFile("pdf", ".pdf"));
+                                HtmlWriter.writeHtmlFile(getSaveFile("html", ".html"), title,
+                                        content.toString(), mood, keywordSet, summary);
+                                PdfGenerator.generatePdfFromText(title, content.toString(),
+                                        String.join("\n", summary), mood, keywordSet,
+                                        getSaveFile("pdf", ".pdf"));
                                 QrCodeGenerator.generateQRCode("내용: " + content,
                                         getSaveFile("qrcodes", ".png").getAbsolutePath());
-                                HtmlZipper.zipHtmlFolder(new File("html"), getSaveFile("html_zip", ".zip"));
+                                HtmlZipper.zipHtmlFolder(new File("html"),
+                                        getSaveFile("html_zip", ".zip"));
                                 ChartGenerator.appendMoodStats(DateUtil.getToday(), mood);
                                 ChartGenerator.generateMoodChart("mood_stats.csv",
                                         "charts/mood_chart_" + DateUtil.getToday() + ".png");
-                                TextSaver.saveTextFile(getSaveFile("txt", ".txt"), title, content.toString());
-                                ExcelSaver.saveExcelFile(getSaveFile("excel", ".xlsx"), title, content.toString());
-                                CsvSaver.saveAsCsv(getSaveFile("csv", ".csv"), title, content.toString());
+                                TextSaver.saveTextFile(getSaveFile("txt", ".txt"), title,
+                                        content.toString());
+                                ExcelSaver.saveExcelFile(getSaveFile("excel", ".xlsx"), title,
+                                        content.toString());
+                                CsvSaver.saveAsCsv(getSaveFile("csv", ".csv"), title,
+                                        content.toString());
                                 System.out.println("✅ 전체 저장 완료");
                                 break;
 
@@ -196,8 +211,9 @@ public class MemoMainApp {
                                 String result = FileReaderHelper.tryReadFile(readFile);
                                 if (result != null) {
                                     System.out.println("✅ 해석 가능, 내용 일부:");
-                                    System.out
-                                            .println(result.length() > 300 ? result.substring(0, 300) + "..." : result);
+                                    System.out.println(
+                                            result.length() > 300 ? result.substring(0, 300) + "..."
+                                                    : result);
                                     lastReadContent = result;
                                 } else {
                                     System.out.println("❌ 해석 불가: 이진 파일 또는 알 수 없는 형식");
@@ -233,10 +249,48 @@ public class MemoMainApp {
                                 System.out.println("✅ CSV에 키워드 2개 추가 저장");
                                 break;
 
+                            case "u":
+                            case "wordcount":
+                                try {
+                                    File javaFile = chooseFile();
+
+                                    if (!javaFile.getName().endsWith(".java")) {
+                                        System.out.println("⚠️ .java 파일만 선택 가능합니다.");
+                                        return;
+                                    }
+
+                                    Map<String, Integer> wordStats =
+                                            JavaWordCounter.countWordsInJavaFile(javaFile);
+                                    JavaWordCounter.printResult(wordStats);
+
+                                    // 저장 여부 묻기
+                                    System.out.print("결과를 저장할까요? (y/n): ");
+                                    String yn = sc.nextLine().trim().toLowerCase();
+                                    if (yn.equals("y")) {
+                                        File out = getSaveFile("wordcount", ".txt");
+                                        try (PrintWriter pw = new PrintWriter(out, "UTF-8")) {
+                                            wordStats.entrySet().stream().sorted(
+                                                    (a, b) -> b.getValue().compareTo(a.getValue()))
+                                                    .forEach(e -> pw.printf("%-15s : %d\n",
+                                                            e.getKey(), e.getValue()));
+                                            System.out.println("✅ 저장 완료: " + out.getAbsolutePath());
+                                        }
+                                    }
+
+                                } catch (Exception e) {
+                                    System.out.println("❌ 처리 중 오류 발생: " + e.getMessage());
+                                    e.printStackTrace(); // 디버깅을 위해 추가
+                                }
+                                break;
+
+
+
                             default:
                                 System.out.println("⚠️ 알 수 없는 명령입니다.");
                                 break;
                         }
+
+
 
                         if (command.equals("q") || command.equals("reset"))
                             break;
