@@ -1,8 +1,7 @@
 package absoluteTest;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 
 public class TextSaver {
 
@@ -10,7 +9,8 @@ public class TextSaver {
     public static void saveTextFile(File file, String title, String content) {
         try {
             file.getParentFile().mkdirs(); // 디렉토리 생성
-            try (FileWriter writer = new FileWriter(file)) {
+            try (Writer writer = new OutputStreamWriter(
+                    new FileOutputStream(file), StandardCharsets.UTF_8)) {
                 writer.write("[제목] " + title + "\n");
                 writer.write("[내용]\n" + content);
             }

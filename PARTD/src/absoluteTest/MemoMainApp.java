@@ -3,9 +3,11 @@ package absoluteTest;
 import javax.swing.*;
 import java.io.*;
 import java.util.*;
+import java.awt.Desktop; // 🔧 자동 열기 기능을 위한 import 추가
 
 public class MemoMainApp {
-    private static final Scanner sc = new Scanner(System.in, "UTF-8");
+    private static final BufferedReader reader = new BufferedReader(
+            new InputStreamReader(System.in, java.nio.charset.StandardCharsets.UTF_8));
 
     // #region 저장 메뉴 안내
     private static final String MENU = """
@@ -27,6 +29,7 @@ public class MemoMainApp {
             🆁  r - read       : 파일 읽기 (html, csv, pdf, 이미지 등)
             🆃  t - transform  : JavaKeyWord 변환 및 저장
             🆈  y - append     : JavaKeyWord 객체 2개 CSV 저장
+            🆄  u - autoopen   : 자동 열기 설정 켜기/끄기
 
             =================================================
             """;
@@ -35,9 +38,11 @@ public class MemoMainApp {
 
     private static String lastReadContent = ""; // t에서 사용하기 위한 데이터
     private static final List<JavaKeyWord> keywords = new ArrayList<>();
+    private static boolean autoOpenAfterSave = true; // 🔧 자동 열기 여부 설정
 
     public static void main(String[] args) {
         try {
+            System.setOut(new PrintStream(System.out, true, "UTF-8")); // 🔧 출력 인코딩 설정
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch (Exception e) {
             System.out.println("⚠️ LookAndFeel 설정 실패: " + e.getMessage());
@@ -50,8 +55,7 @@ public class MemoMainApp {
         while (true) {
             try {
                 System.out.println(MENU);
-                System.out.print("제목을 입력하세요: ");
-                String title = sc.nextLine().trim();
+                String title = getUserInput("제목을 입력하세요: ").trim();
                 if (title.isBlank())
                     continue;
 
@@ -60,12 +64,11 @@ public class MemoMainApp {
                 List<String> lines = new ArrayList<>();
 
                 while (true) {
-                    System.out.print(">> ");
-                    String line = sc.nextLine();
+                    String line = getUserInput(">> ");
 
                     if (line.trim().equalsIgnoreCase("\\menu")) {
                         System.out.print("⚠️ 내용을 종료하고 저장 메뉴로 이동하시겠습니까? (y/n): ");
-                        if (sc.nextLine().trim().equalsIgnoreCase("y"))
+                        if (reader.readLine().trim().equalsIgnoreCase("y"))
                             break;
                         else
                             continue;
@@ -87,7 +90,7 @@ public class MemoMainApp {
                 while (true) {
                     System.out.println(MENU);
                     System.out.print("⚙️ 저장 옵션 선택: ");
-                    String command = sc.nextLine().trim().toLowerCase();
+                    String command = reader.readLine().trim().toLowerCase();
 
                     try {
                         switch (command) {
@@ -111,6 +114,7 @@ public class MemoMainApp {
                             case "txt":
                                 File file3 = getSaveFile("txt", ".txt");
                                 TextSaver.saveTextFile(file3, title, content.toString());
+                                openFileIfEnabled(file3); // 🔧 자동 열기 호출
                                 System.out.println("✅ TXT 저장 완료");
                                 break;
 
@@ -233,6 +237,13 @@ public class MemoMainApp {
                                 System.out.println("✅ CSV에 키워드 2개 추가 저장");
                                 break;
 
+                            case "u":
+                            case "autoopen":
+                                String choice = getUserInput("자동 열기 기능을 활성화 하시겠습니까? (y/n): ").trim().toLowerCase();
+                                autoOpenAfterSave = choice.equals("y");
+                                System.out.println("✅ 설정 완료: " + (autoOpenAfterSave ? "활성화됨" : "비활성화됨"));
+                                break;
+
                             default:
                                 System.out.println("⚠️ 알 수 없는 명령입니다.");
                                 break;
@@ -291,14 +302,47 @@ public class MemoMainApp {
     // 확장자 선택
     private static String chooseExtension() {
         System.out.print("저장 형식을 선택하세요 (txt/csv/html/pdf/excel): ");
-        String ext = sc.nextLine().trim().toLowerCase();
-        return switch (ext) {
-            case "txt" -> ".txt";
-            case "csv" -> ".csv";
-            case "html" -> ".html";
-            case "pdf" -> ".pdf";
-            case "excel" -> ".xlsx";
-            default -> ".txt";
-        };
+        try {
+            String ext = reader.readLine().trim().toLowerCase();
+            return switch (ext) {
+                case "txt" -> ".txt";
+                case "csv" -> ".csv";
+                case "html" -> ".html";
+                case "pdf" -> ".pdf";
+                case "excel" -> ".xlsx";
+                default -> ".txt";
+            };
+        } catch (IOException e) {
+            System.out.println("❌ 입력 오류 발생: " + e.getMessage());
+            return ".txt"; // 기본값 반환
+        }
+
     }
+
+    // 저장 후 자동 열기 기능
+    private static void openFileIfEnabled(File file) {
+        if (autoOpenAfterSave) {
+            try {
+                if (Desktop.isDesktopSupported()) {
+                    Desktop.getDesktop().open(file);
+                    System.out.println("📂 자동으로 열림: " + file.getAbsolutePath());
+                } else {
+                    System.out.println("⚠️ Desktop 열기 기능이 지원되지 않습니다.");
+                }
+            } catch (IOException e) {
+                System.out.println("❌ 파일 자동 열기 실패: " + e.getMessage());
+            }
+        }
+    }
+
+    private static String getUserInput(String prompt) {
+        System.out.print(prompt);
+        try {
+            return reader.readLine(); // 전역 reader 사용
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
 }
