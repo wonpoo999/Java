@@ -1,13 +1,18 @@
 package absoluteTest;
 
-import javax.swing.*;
-import java.io.*;
-import java.util.*;
-import java.awt.Desktop; // 🔧 자동 열기 기능을 위한 import 추가
+import java.io.File;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Scanner;
+import java.util.Set;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.UIManager;
 
 public class MemoMainApp {
-    private static final BufferedReader reader = new BufferedReader(
-            new InputStreamReader(System.in, java.nio.charset.StandardCharsets.UTF_8));
+    private static final Scanner sc = new Scanner(System.in, "UTF-8");
 
     // #region 저장 메뉴 안내
     private static final String MENU = """
@@ -29,7 +34,7 @@ public class MemoMainApp {
             🆁  r - read       : 파일 읽기 (html, csv, pdf, 이미지 등)
             🆃  t - transform  : JavaKeyWord 변환 및 저장
             🆈  y - append     : JavaKeyWord 객체 2개 CSV 저장
-            🆄  u - autoopen   : 자동 열기 설정 켜기/끄기
+            🆄  u - wordcount : 자바 소스 단어 출현 카운트
 
             =================================================
             """;
@@ -38,11 +43,9 @@ public class MemoMainApp {
 
     private static String lastReadContent = ""; // t에서 사용하기 위한 데이터
     private static final List<JavaKeyWord> keywords = new ArrayList<>();
-    private static boolean autoOpenAfterSave = true; // 🔧 자동 열기 여부 설정
 
     public static void main(String[] args) {
         try {
-            System.setOut(new PrintStream(System.out, true, "UTF-8")); // 🔧 출력 인코딩 설정
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch (Exception e) {
             System.out.println("⚠️ LookAndFeel 설정 실패: " + e.getMessage());
@@ -55,7 +58,8 @@ public class MemoMainApp {
         while (true) {
             try {
                 System.out.println(MENU);
-                String title = getUserInput("제목을 입력하세요: ").trim();
+                System.out.print("제목을 입력하세요: ");
+                String title = sc.nextLine().trim();
                 if (title.isBlank())
                     continue;
 
@@ -64,11 +68,12 @@ public class MemoMainApp {
                 List<String> lines = new ArrayList<>();
 
                 while (true) {
-                    String line = getUserInput(">> ");
+                    System.out.print(">> ");
+                    String line = sc.nextLine();
 
                     if (line.trim().equalsIgnoreCase("\\menu")) {
                         System.out.print("⚠️ 내용을 종료하고 저장 메뉴로 이동하시겠습니까? (y/n): ");
-                        if (reader.readLine().trim().equalsIgnoreCase("y"))
+                        if (sc.nextLine().trim().equalsIgnoreCase("y"))
                             break;
                         else
                             continue;
@@ -90,7 +95,7 @@ public class MemoMainApp {
                 while (true) {
                     System.out.println(MENU);
                     System.out.print("⚙️ 저장 옵션 선택: ");
-                    String command = reader.readLine().trim().toLowerCase();
+                    String command = sc.nextLine().trim().toLowerCase();
 
                     try {
                         switch (command) {
@@ -98,15 +103,16 @@ public class MemoMainApp {
                             case "1":
                             case "html":
                                 File file1 = getSaveFile("html", ".html");
-                                HtmlWriter.writeHtmlFile(file1, title, content.toString(), mood, keywordSet, summary);
+                                HtmlWriter.writeHtmlFile(file1, title, content.toString(), mood,
+                                        keywordSet, summary);
                                 System.out.println("✅ HTML 저장 완료");
                                 break;
 
                             case "2":
                             case "pdf":
                                 File file2 = getSaveFile("pdf", ".pdf");
-                                PdfGenerator.generatePdfFromText(title, content.toString(), String.join("\n", summary),
-                                        mood, keywordSet, file2);
+                                PdfGenerator.generatePdfFromText(title, content.toString(),
+                                        String.join("\n", summary), mood, keywordSet, file2);
                                 System.out.println("✅ PDF 저장 완료");
                                 break;
 
@@ -114,7 +120,6 @@ public class MemoMainApp {
                             case "txt":
                                 File file3 = getSaveFile("txt", ".txt");
                                 TextSaver.saveTextFile(file3, title, content.toString());
-                                openFileIfEnabled(file3); // 🔧 자동 열기 호출
                                 System.out.println("✅ TXT 저장 완료");
                                 break;
 
@@ -135,7 +140,8 @@ public class MemoMainApp {
                             case "6":
                             case "qr":
                                 File file6 = getSaveFile("qrcodes", ".png");
-                                QrCodeGenerator.generateQRCode("내용: " + content, file6.getAbsolutePath());
+                                QrCodeGenerator.generateQRCode("내용: " + content,
+                                        file6.getAbsolutePath());
                                 System.out.println("✅ QR 코드 저장 완료");
                                 break;
 
@@ -156,19 +162,24 @@ public class MemoMainApp {
 
                             case "9":
                             case "all":
-                                HtmlWriter.writeHtmlFile(getSaveFile("html", ".html"), title, content.toString(), mood,
-                                        keywordSet, summary);
-                                PdfGenerator.generatePdfFromText(title, content.toString(), String.join("\n", summary),
-                                        mood, keywordSet, getSaveFile("pdf", ".pdf"));
+                                HtmlWriter.writeHtmlFile(getSaveFile("html", ".html"), title,
+                                        content.toString(), mood, keywordSet, summary);
+                                PdfGenerator.generatePdfFromText(title, content.toString(),
+                                        String.join("\n", summary), mood, keywordSet,
+                                        getSaveFile("pdf", ".pdf"));
                                 QrCodeGenerator.generateQRCode("내용: " + content,
                                         getSaveFile("qrcodes", ".png").getAbsolutePath());
-                                HtmlZipper.zipHtmlFolder(new File("html"), getSaveFile("html_zip", ".zip"));
+                                HtmlZipper.zipHtmlFolder(new File("html"),
+                                        getSaveFile("html_zip", ".zip"));
                                 ChartGenerator.appendMoodStats(DateUtil.getToday(), mood);
                                 ChartGenerator.generateMoodChart("mood_stats.csv",
                                         "charts/mood_chart_" + DateUtil.getToday() + ".png");
-                                TextSaver.saveTextFile(getSaveFile("txt", ".txt"), title, content.toString());
-                                ExcelSaver.saveExcelFile(getSaveFile("excel", ".xlsx"), title, content.toString());
-                                CsvSaver.saveAsCsv(getSaveFile("csv", ".csv"), title, content.toString());
+                                TextSaver.saveTextFile(getSaveFile("txt", ".txt"), title,
+                                        content.toString());
+                                ExcelSaver.saveExcelFile(getSaveFile("excel", ".xlsx"), title,
+                                        content.toString());
+                                CsvSaver.saveAsCsv(getSaveFile("csv", ".csv"), title,
+                                        content.toString());
                                 System.out.println("✅ 전체 저장 완료");
                                 break;
 
@@ -200,8 +211,9 @@ public class MemoMainApp {
                                 String result = FileReaderHelper.tryReadFile(readFile);
                                 if (result != null) {
                                     System.out.println("✅ 해석 가능, 내용 일부:");
-                                    System.out
-                                            .println(result.length() > 300 ? result.substring(0, 300) + "..." : result);
+                                    System.out.println(
+                                            result.length() > 300 ? result.substring(0, 300) + "..."
+                                                    : result);
                                     lastReadContent = result;
                                 } else {
                                     System.out.println("❌ 해석 불가: 이진 파일 또는 알 수 없는 형식");
@@ -238,10 +250,36 @@ public class MemoMainApp {
                                 break;
 
                             case "u":
-                            case "autoopen":
-                                String choice = getUserInput("자동 열기 기능을 활성화 하시겠습니까? (y/n): ").trim().toLowerCase();
-                                autoOpenAfterSave = choice.equals("y");
-                                System.out.println("✅ 설정 완료: " + (autoOpenAfterSave ? "활성화됨" : "비활성화됨"));
+                            case "wordcount":
+                                try {
+                                    File javaFile = chooseFile();
+
+                                    if (!javaFile.getName().endsWith(".java")) {
+                                        System.out.println("⚠️ .java 파일만 선택 가능합니다.");
+                                        return;
+                                    }
+
+                                    Map<String, Integer> wordStats = JavaWordCounter.countWordsInJavaFile(javaFile);
+                                    JavaWordCounter.printResult(wordStats);
+
+                                    // 저장 여부 묻기
+                                    System.out.print("결과를 저장할까요? (y/n): ");
+                                    String yn = sc.nextLine().trim().toLowerCase();
+                                    if (yn.equals("y")) {
+                                        File out = getSaveFile("wordcount", ".txt");
+                                        try (PrintWriter pw = new PrintWriter(out, "UTF-8")) {
+                                            wordStats.entrySet().stream().sorted(
+                                                    (a, b) -> b.getValue().compareTo(a.getValue()))
+                                                    .forEach(e -> pw.printf("%-15s : %d\n",
+                                                            e.getKey(), e.getValue()));
+                                            System.out.println("✅ 저장 완료: " + out.getAbsolutePath());
+                                        }
+                                    }
+
+                                } catch (Exception e) {
+                                    System.out.println("❌ 처리 중 오류 발생: " + e.getMessage());
+                                    e.printStackTrace(); // 디버깅을 위해 추가
+                                }
                                 break;
 
                             default:
@@ -302,47 +340,14 @@ public class MemoMainApp {
     // 확장자 선택
     private static String chooseExtension() {
         System.out.print("저장 형식을 선택하세요 (txt/csv/html/pdf/excel): ");
-        try {
-            String ext = reader.readLine().trim().toLowerCase();
-            return switch (ext) {
-                case "txt" -> ".txt";
-                case "csv" -> ".csv";
-                case "html" -> ".html";
-                case "pdf" -> ".pdf";
-                case "excel" -> ".xlsx";
-                default -> ".txt";
-            };
-        } catch (IOException e) {
-            System.out.println("❌ 입력 오류 발생: " + e.getMessage());
-            return ".txt"; // 기본값 반환
-        }
-
+        String ext = sc.nextLine().trim().toLowerCase();
+        return switch (ext) {
+            case "txt" -> ".txt";
+            case "csv" -> ".csv";
+            case "html" -> ".html";
+            case "pdf" -> ".pdf";
+            case "excel" -> ".xlsx";
+            default -> ".txt";
+        };
     }
-
-    // 저장 후 자동 열기 기능
-    private static void openFileIfEnabled(File file) {
-        if (autoOpenAfterSave) {
-            try {
-                if (Desktop.isDesktopSupported()) {
-                    Desktop.getDesktop().open(file);
-                    System.out.println("📂 자동으로 열림: " + file.getAbsolutePath());
-                } else {
-                    System.out.println("⚠️ Desktop 열기 기능이 지원되지 않습니다.");
-                }
-            } catch (IOException e) {
-                System.out.println("❌ 파일 자동 열기 실패: " + e.getMessage());
-            }
-        }
-    }
-
-    private static String getUserInput(String prompt) {
-        System.out.print(prompt);
-        try {
-            return reader.readLine(); // 전역 reader 사용
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
 }
