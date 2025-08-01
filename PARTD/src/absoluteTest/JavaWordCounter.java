@@ -29,7 +29,7 @@ public class JavaWordCounter {
                     map.put(word, map.getOrDefault(word, 0) + 1);
             }
         }
-    }return map;
+        return map;
 
     }
 
